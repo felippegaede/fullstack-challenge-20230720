@@ -1,5 +1,14 @@
 <?php
 
+use App\Router;
+
 require_once '../vendor/autoload.php';
 
-echo 'Hello, world!';
+$router = new Router;
+
+$router->get('/api/plans', function () {
+
+    echo 'Hello, world!!';
+});
+
+$router->run();
