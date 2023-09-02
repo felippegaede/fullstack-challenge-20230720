@@ -29,11 +29,12 @@ class PlanController
 
     /**
      * Método para obter uma lista de planos filtrados.
-     *
+     * 
+     * @param array $sort Um array que define as chaves dinâmicas de ordenação e a direção (-1 para descendente, 1 para ascendente).
      * @return array Um array contendo os planos filtrados.
      */
-    public function get(): array
+    public function get(array $sort): array
     {
-        return $this->plan->filterPlans();
+        return $this->plan->filterPlans($sort);
     }
 }

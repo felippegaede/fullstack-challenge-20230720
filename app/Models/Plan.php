@@ -5,21 +5,31 @@
 
     class Plan 
     {
+
         /**
          * Filtra e ordena a lista de planos de acordo com os critérios especificados.
          * 
+         * @param array $sort Um array que define as chaves dinâmicas de ordenação e a direção (-1 para descendente, 1 para ascendente).
          * @return array Lista de planos filtrada e ordenada.
          */
-        public function filterPlans(): array
+        public function filterPlans(array $sort): array
         {
+            // Inicia a filtragem padrão de acordo com os critérios do desafio
+            if (!$sort) {
+                $sort = [
+                    'schedule.startDate' => -1,
+                    'localidade.prioridade' => -1
+                ];
+            }
+
             try {
                 list ($device, $plans) = $this->getPlansAndDevice();
             
                 $plans = $this->removeInvalidPlans($plans); // Array de planos válidos.
-                $plans = $this->orderPlans($plans);  // Array de planos válidos e ordenados.
+                $plans = $this->orderPlans($plans, $sort);  // Array de planos válidos e ordenados.
                 $plans = $this->removeDuplicatePlans($plans); // Array final filtrado.
     
-                return $plans;
+                return ['device'=> $device, 'plans' => $plans];
             }catch(\Exception $e){
                 return ['error' => $e->getMessage()];
             }
@@ -69,11 +79,7 @@
 
             foreach ($plans as $plan) {
                 if (
-                    isset($plan['schedule']['startDate']) && 
-                    isset($plan['name']) && 
-                    isset($plan['localidade']['prioridade']) && 
-                    strtotime($plan['schedule']['startDate']) < $now
-                ){
+                    isset($plan['name']) && strtotime($plan['schedule']['startDate']) < $now){
                     array_push($validPlans, $plan);
                 }
             }
@@ -81,19 +87,44 @@
         }
 
         /**
-         * Ordena os planos de acordo com a data de início e a prioridade da localidade.
+         * Ordena os planos de acordo com os critérios definidos no array $sort.
          * 
          * @param array $plans Lista de planos a ser ordenada.
+         * @param array $sort Um array que define as chaves dinâmicas de ordenação e a direção (-1 para descendente, 1 para ascendente).
          * @return array Lista de planos ordenada.
          */
-        private function orderPlans(array $plans): array
+        private function orderPlans(array $plans, array $sort): array
         {          
-            usort($plans, function ($a, $b) {
-                // retorna 1 quando $b for maior que $a, -1 quando $a for maior que $b e 0 quando $a e $b forem iguais
-                $resultado = $b['schedule']['startDate'] <=> $a['schedule']['startDate'];
+            // Usa a função usort para ordenar o array $plans com base nas chaves dinâmicas definidas em $sort
+            usort($plans, function ($a, $b) use ($sort){
+                foreach ($sort as $key => $value) {
+                    $currentA = $a;
+                    $currentB= $b;
 
-                // se a comparação anterior retornar 0 ($a igual a $b), faz uma nova comparação. Porém, desta vez pela localidade.
-                return $resultado === 0 ? $b['localidade']['prioridade'] <=> $a['localidade']['prioridade'] : $resultado;
+                    // Divide a chave dinâmica em partes para acessar os valores desejados no array
+                    $columns = explode('.', $key);
+
+                    // Percorre as partes da chave dinâmica para acessar os valores correspondentes nos planos
+                    foreach ($columns as $column) {
+                        // Verifica se a coluna que se deseja ordenar existe, se não existir ignora.
+                        if (!isset($currentA[$column]) || !isset($currentB[$column])) {
+                            continue;
+                        }
+                        $currentA = $currentA[$column];
+                        $currentB= $currentB[$column];
+                    }
+
+                    // Calcula o resultado da comparação com a direção de ordenação
+                    $result = (-1 * $value) * ($currentB <=> $currentA);
+
+                    // Se os valores são iguais, continua para a próxima chave de ordenação
+                    if ($result === 0){
+                        continue;
+                    }
+
+                    // Retorna o resultado da comparação para a ordenação
+                    return $result;
+                }
             });
 
             return $plans;
